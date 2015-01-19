@@ -7,11 +7,12 @@ local robot = require("robot")
 local keyboard = require("keyboard")
 local event =  require("event")
 local sides = require("sides")
-local ic = component.inventory_controller
+
 
 local wood = 16
 local sapling = 15
-local version = "0.2.1 open alpha"
+local last_free = 14
+local version = "0.2.2 open alpha"
 local for_os = "1.4.4+"
 local run = false
 local running = false
@@ -30,6 +31,8 @@ if not component.isAvailable("inventory_controller") then
     error("Inventory Controller not found")
     return -2
 end
+
+local ic = component.inventory_controller
 
 if not fs.exists(config_name) then
     error("Config not present")
@@ -50,8 +53,6 @@ else
     error("Config couldn't be opened")
     return -5
 end
-
-local ic = component.inventory_controller
 
 local redstone = nil
 
@@ -116,6 +117,7 @@ local function calcMaxMovement()
     c = c + config.field.start --to get to the first tree
     c = c + (2 * (config.misc.tree - 2)) * config.field.x * config.field.z --max tree traverse
     c = c + config.field.x * config.field.z * (config.field.step + 1) --max field traverse
+    c = c + config.field.x * config.field.z * 4 --circle around tree
     c = c + config.field.x + config.field.z --max line traverse
     c = c + (config.field.x + config.field.z) * (config.field.step + 1) + config.field.start
     return c
@@ -141,7 +143,7 @@ local function printRunOptions(wait)
 end
 
 local function checkEnergy()
-    local requiredEnergy = calcMaxMovement() * config.cost.move * 1.4;
+    local requiredEnergy = calcMaxMovement() * config.cost.move * config.cost.safeadd;
     requiredEnergy = requiredEnergy + config.field.x * config.field.z * config.misc.tree * config.cost.hit;
     local maxEnergy = computer.maxEnergy()
     if maxEnergy < requiredEnergy then
@@ -158,7 +160,7 @@ local function checkEnergy()
 end
 
 local function selectEmptySlot()
-    for i = 1, 14 do
+    for i = 1, last_free do
         if robot.count(i) == 0 then
             robot.select(i)
             return true
@@ -212,7 +214,7 @@ local function countSaplings()
     local old = robot.select()
     robot.select(sapling)
     local saplings = 0
-    for i = 1, 14 do 
+    for i = 1, last_free do 
         if robot.compareTo(i) then
             saplings = saplings + robot.count(i)
         end
@@ -262,7 +264,7 @@ end]]
 
 local function placeSaplingFront()
     robot.select(sapling)
-    for i = 1, 14 do
+    for i = 1, last_free do
         if robot.compareTo(i) then
             robot.select(i)
             robot.place()
@@ -273,11 +275,11 @@ end
 
 local function circleTree()
     robot.turnLeft()
-    moveForward(1, false)
+    moveForward(1, true)
     robot.turnRight()
-    moveForward(2, false)
+    moveForward(2, true)
     robot.turnRight()
-    moveForward(1, false)
+    moveForward(1, true)
     robot.turnLeft()
 end
 
@@ -295,13 +297,13 @@ end
 local function doTreeLineX()
     for i = 1, config.field.x do
         if robot.swing() then
-            robot.forward()
+            moveForward(1, true)
             cutTree()
-            replantTree()            
+            replantTree()
         else
-            robot.down()
+            moveDown(1, true)
             placeSaplingFront()
-            robot.up()
+            moveUp(1,true)
             circleTree()
         end
         
@@ -315,7 +317,7 @@ end
 
 local function dropWood()
 	local old = robot.select()
-	for i=1, 14 do
+	for i=1, last_free do
 		robot.select(i)
 		if robot.compareTo(wood) then
 			robot.dropDown()
@@ -454,7 +456,6 @@ local function main()
 	print("If everything is correct please press 1 or q for quit")
 	while true do
 		local _, _, _, code = event.pull("key_down")
-		print(code)
 		if code == keyboard.keys["1"] then
 			return runFarm()
 		elseif code == keyboard.keys.q then

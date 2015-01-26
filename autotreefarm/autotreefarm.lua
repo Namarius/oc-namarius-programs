@@ -247,9 +247,7 @@ local function cutTree()
         robot.up()
         moved = moved + 1
     end
-    for i = 1 , moved do
-        robot.down()
-    end
+    moveDown(moved, false)
 end
 
 --[[local function placeSaplingDown()
@@ -303,11 +301,13 @@ end
 
 local function doTreeLineX()
     for i = 1, config.field.x do
-        robot.select(sapling)
+        robot.select(wood)
         if robot.compare() then
             moveForward(1, true)
             cutTree()
             replantTree()
+        elseif robot.select(sapling) and robot.compare() then
+            circleTree()
         else
             --moveDown(1, true)
             placeSaplingFront()

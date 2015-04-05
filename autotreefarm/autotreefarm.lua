@@ -12,8 +12,8 @@ local sides = require("sides")
 local wood = 16
 local sapling = 15
 local last_free = 14
-local version = "0.2.2 open alpha"
-local for_os = "1.4.4+"
+local version = "0.4 open alpha(normal-route)"
+local for_os = "1.5+"
 local run = false
 local running = false
 local continuous = false
@@ -43,6 +43,7 @@ local file_config = io.open(config_name,"r")
 local config = nil
 if file_config then
     local content = file_config:read("*a")
+	file_config:close()
     local reason
     config, reason = serialization.unserialize(content)
     if not config then
@@ -143,7 +144,7 @@ local function printRunOptions(wait)
 end
 
 local function checkEnergy()
-    local requiredEnergy = calcMaxMovement() * config.cost.move * config.cost.safeadd;
+    local requiredEnergy = calcMaxMovement() * config.cost.move * config.cost.safe_add;
     requiredEnergy = requiredEnergy + config.field.x * config.field.z * config.misc.tree * config.cost.hit;
     local maxEnergy = computer.maxEnergy()
     if maxEnergy < requiredEnergy then
@@ -233,8 +234,8 @@ local function checkSaplings()
 end
 
 local function moveFirstTree()
-    moveUp(1,true)
-    moveForward(config.field.start,true)
+    moveUp(1, true)
+    moveForward(config.field.start, true)
 end
 
 local function cutTree()
@@ -246,12 +247,10 @@ local function cutTree()
         robot.up()
         moved = moved + 1
     end
-    for i = 1 , moved do
-        robot.down()
-    end
+    moveDown(moved, false)
 end
 
---[[local function placeSaplingDown()
+local function placeSaplingDown()
     robot.select(sapling)
     for i = 1, 14 do
         if robot.compareTo(i) then
@@ -260,57 +259,24 @@ end
             return
         end
     end
-end]]
-
-local function placeSaplingFront()
-    robot.select(sapling)
-    for i = 1, last_free do
-        if robot.compareTo(i) then
-            robot.select(i)
-            robot.place()
-            return
-        end
-    end
-end
-
-local function circleTree()
-    robot.turnLeft()
-    moveForward(1, true)
-    robot.turnRight()
-    moveForward(2, true)
-    robot.turnRight()
-    moveForward(1, true)
-    robot.turnLeft()
-end
-
-local function replantTree()
-    moveForward(1, true)
-    robot.turnRight()
-    robot.turnRight()
-    moveDown(1, true)
-    placeSaplingFront()
-    moveUp(1, true)
-    robot.turnRight()
-    robot.turnRight()
 end
 
 local function doTreeLineX()
     for i = 1, config.field.x do
-        if robot.swing() then
+        robot.select(wood)
+        if robot.compare() then
             moveForward(1, true)
             cutTree()
-            replantTree()
+            placeSaplingDown()
         else
-            moveDown(1, true)
-            placeSaplingFront()
-            moveUp(1,true)
-            circleTree()
+            moveForward(1, true)
+			robot.select(sapling)
+			placeSaplingDown()
         end
-        
         if i == config.field.x then
-            --moveForward(1,true)
+            moveForward(1,true)
         else
-            moveForward(config.field.step-1,true)
+            moveForward(config.field.step,true)
         end
     end
 end
@@ -324,7 +290,24 @@ local function dropWood()
 		end
 	end
 	robot.select(old)
-end		
+end
+
+local function returnEven(z_offset)
+    moveForward(config.field.start, true) --move to return line
+    robot.turnRight()
+    moveForward((z_offset - 1) * (config.field.step + 1), true)
+    moveDown(1,ture)
+end
+
+local function returnOdd(z_offset)
+    robot.turnRight()
+    moveForward(1,true)
+    robot.turnRight()
+    moveForward((config.field.x * (config.field.step + 1)) + config.field.start - 1, true)
+    robot.turnRight()
+    moveForward((z_offset - 1) * (config.field.step + 1) + 1, true)
+    moveDown(1,ture)
+end
 
 local function singleRun()
     checkEnergy()
@@ -337,19 +320,10 @@ local function singleRun()
 		dropWood()
 		if not isToolPresent() then
 			if i % 2 == 0 then
-				moveForward(config.field.start, true) --move to return line
-				robot.turnRight()
-				moveForward((i - 1) * (config.field.step + 1), true)
-				moveDown(1,ture)
+				returnEven(i)
 				return nil
 			else
-				robot.turnRight()
-				moveForward(1,true)
-				robot.turnRight()
-				moveForward((config.field.x * (config.field.step + 1)) + config.field.start - 1, true)
-				robot.turnRight()
-				moveForward((i - 1) * (config.field.step + 1) + 1, true)
-				moveDown(1,ture)
+				returnOdd(i)
 				return nil
 			end
 		end
@@ -364,18 +338,9 @@ local function singleRun()
                 robot.turnRight()
             end
         elseif config.field.z % 2 == 0 then --Return even
-            moveForward(config.field.start, true)
-            robot.turnRight()
-            moveForward((config.field.z - 1) * (config.field.step + 1), true)
-            moveDown(1,ture)
+            returnEven(i)
         else                                --Return odd
-            robot.turnRight()
-            moveForward(1,true)
-            robot.turnRight()
-            moveForward((config.field.x * (config.field.step + 1)) + config.field.start - 1, true)
-            robot.turnRight()
-            moveForward((config.field.z - 1) * (config.field.step + 1) + 1, true)
-            moveDown(1,ture)
+            returnOdd(i)
         end
     end
 end
@@ -464,6 +429,11 @@ local function main()
 	end
 end
 
-main()
+local state, err = xpcall(main, debug.traceback)
+if not state then
+	local f = io.open("autotreefarm_error"..tostring(os.clock()), "w")
+	f:write(err)
+	f:close()
+	return -1
+end
 term.clear()
-    

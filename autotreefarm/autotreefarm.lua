@@ -12,7 +12,7 @@ local sides = require("sides")
 local wood = 16
 local sapling = 15
 local last_free = 14
-local version = "0.4 open alpha(normal-route)"
+local version = "0.4.1 open alpha(normal-route)"
 local for_os = "1.5+"
 local run = false
 local running = false
@@ -43,7 +43,7 @@ local file_config = io.open(config_name,"r")
 local config = nil
 if file_config then
     local content = file_config:read("*a")
-	file_config:close()
+    file_config:close()
     local reason
     config, reason = serialization.unserialize(content)
     if not config then
@@ -58,7 +58,7 @@ end
 local redstone = nil
 
 if component.isAvailable("redstone") then
-	redstone = component.redstone
+    redstone = component.redstone
 end
 
 local function moveDirection(moves, forced, fmove, fswing)
@@ -125,20 +125,20 @@ local function calcMaxMovement()
 end
 
 local function printRunOptions(wait)
-	term.setCursor(1,5)
-	print("R: Toggle Run")
-	if redstone then
-		print("C: Continuous operation              ")
-	else
-		print("C: Continuous operation (unavailable)")
-	end
-	print("Q: Quit program")
-	print("Run: "..tostring(run).."  ")
-	print("Running: "..tostring(running).."  ")
-	print("Continuous: "..tostring(continuous).."  ")
-	if wait ~= nil then
-		print("Wait for recharge: "..tostring(wait))
-	else
+    term.setCursor(1,5)
+    print("R: Toggle Run")
+    if redstone then
+        print("C: Continuous operation              ")
+    else
+        print("C: Continuous operation (unavailable)")
+    end
+    print("Q: Quit program")
+    print("Run: "..tostring(run).."  ")
+    print("Running: "..tostring(running).."  ")
+    print("Continuous: "..tostring(continuous).."  ")
+    if wait ~= nil then
+        print("Wait for recharge: "..tostring(wait))
+    else
         term.clearLine()
     end
 end
@@ -154,7 +154,7 @@ local function checkEnergy()
     local wait = 1
     while computer.energy() < requiredEnergy do
         printRunOptions(wait)
-		wait = wait + 1
+        wait = wait + 1
         os.sleep(1)
     end
     return true
@@ -182,33 +182,33 @@ local function checkTool()
             error("Could not equip tool")
             return false
         end
-	elseif damage == nil and message == "tool cannot be damaged" then --I think this will not happen
-		error("Not damage able tool")
+    elseif damage == nil and message == "tool cannot be damaged" then --I think this will not happen
+        error("Not damage able tool")
     elseif config.misc.min_tool > damage then
-		if not selectEmptySlot() then
+        if not selectEmptySlot() then
             error("Could not find an empty slot for tool")
             return false
         end
-		if not ic.equip() then
-			error("Something is really wrong")
-			return false
-		end
-		robot.dropDown()
-		robot.suck(1)
-		if not ic.equip() then
+        if not ic.equip() then
+            error("Something is really wrong")
+            return false
+        end
+        robot.dropDown()
+        robot.suck(1)
+        if not ic.equip() then
             error("Could not equip tool")
             return false
         end
-	end			
+    end            
 end
 
 local function isToolPresent()
-	local damage, message = robot.durability()
-	if damage == nil and message == "no tool equipped" then
-		return false
-	else
-		return true
-	end
+    local damage, message = robot.durability()
+    if damage == nil and message == "no tool equipped" then
+        return false
+    else
+        return true
+    end
 end
 
 local function countSaplings()
@@ -243,8 +243,7 @@ local function cutTree()
     robot.swingDown()
     local moved = 0
     while robot.compareUp() do
-        robot.swingUp()
-        robot.up()
+        moveUp(1, true)
         moved = moved + 1
     end
     moveDown(moved, false)
@@ -270,8 +269,8 @@ local function doTreeLineX()
             placeSaplingDown()
         else
             moveForward(1, true)
-			robot.select(sapling)
-			placeSaplingDown()
+            robot.select(sapling)
+            placeSaplingDown()
         end
         if i == config.field.x then
             moveForward(1,true)
@@ -282,14 +281,14 @@ local function doTreeLineX()
 end
 
 local function dropWood()
-	local old = robot.select()
-	for i=1, last_free do
-		robot.select(i)
-		if robot.compareTo(wood) then
-			robot.dropDown()
-		end
-	end
-	robot.select(old)
+    local old = robot.select()
+    for i=1, last_free do
+        robot.select(i)
+        if robot.compareTo(wood) then
+            robot.dropDown()
+        end
+    end
+    robot.select(old)
 end
 
 local function returnEven(z_offset)
@@ -317,16 +316,16 @@ local function singleRun()
     moveFirstTree()
     for i = 1, config.field.z do
         doTreeLineX()
-		dropWood()
-		if not isToolPresent() then
-			if i % 2 == 0 then
-				returnEven(i)
-				return nil
-			else
-				returnOdd(i)
-				return nil
-			end
-		end
+        dropWood()
+        if not isToolPresent() then
+            if i % 2 == 0 then
+                returnEven(i)
+                return nil
+            else
+                returnOdd(i)
+                return nil
+            end
+        end
         if i ~= config.field.z then     --Is End?
             if i % 2 == 0 then
                 robot.turnLeft()
@@ -346,94 +345,94 @@ local function singleRun()
 end
 
 local function printVersionHead()
-	term.clear()
-	print("Autotreefarm by Namarius")
-	print("Powered by OpenComputers and Lua")
-	print("Version "..version.." for "..for_os)
-	print()
+    term.clear()
+    print("Autotreefarm by Namarius")
+    print("Powered by OpenComputers and Lua")
+    print("Version "..version.." for "..for_os)
+    print()
 end
 
 local function toggleRun()
-	run = not run
-	printRunOptions()
+    run = not run
+    printRunOptions()
 end
 
 local function toggleContinuous()
-	continuous = not continuous
-	printRunOptions()
+    continuous = not continuous
+    printRunOptions()
 end
 
 local function setRunning(runmode)
-	if runmode then
-		running = true
-	else
-		running = false
-	end
-	printRunOptions()
+    if runmode then
+        running = true
+    else
+        running = false
+    end
+    printRunOptions()
 end
 
 local function runFarm()
-	printVersionHead()
-	printRunOptions()
-	while true do
-		local event, _, _, code = event.pull()
-		if event == "key_down" then
-			if code == keyboard.keys.r then
-				toggleRun()
-			elseif code == keyboard.keys.c then
-				toggleContinuous()
-			elseif code == keyboard.keys.q then
-				return 0
-			end
-			printRunOptions()
-		end
-		if run then
-			if continuous then
-				if redstone.getInput(sides.left) > 0 then
-					setRunning(true)
-					singleRun()
-					setRunning(false)
-				end
-			else
-				toggleRun()
-				setRunning(true)
-				singleRun()
-				setRunning(false)
-			end
-		end
-	end	
+    printVersionHead()
+    printRunOptions()
+    while true do
+        local event, _, _, code = event.pull()
+        if event == "key_down" then
+            if code == keyboard.keys.r then
+                toggleRun()
+            elseif code == keyboard.keys.c then
+                toggleContinuous()
+            elseif code == keyboard.keys.q then
+                return 0
+            end
+            printRunOptions()
+        end
+        if run then
+            if continuous then
+                if redstone.getInput(sides.left) > 0 then
+                    setRunning(true)
+                    singleRun()
+                    setRunning(false)
+                end
+            else
+                toggleRun()
+                setRunning(true)
+                singleRun()
+                setRunning(false)
+            end
+        end
+    end    
 end
 
 
 local function main()
-	term.clear()
-	print("Autotreefarm by Namarius")
-	print("Powered by OpenComputers and Lua")
-	print("Version "..version)
-	print()
-	print(
+    term.clear()
+    print("Autotreefarm by Namarius")
+    print("Powered by OpenComputers and Lua")
+    print("Version "..version)
+    print()
+    print(
 "Please place a sapling at position 15 and wood at position 16 in the inventory. "..
 "The tree farm itself should be right from this robot. "..
 "Please provide 3 inventorys with the following items")
-	print("Front: Tools (can be battery)")
-	print("Right: Saplings (must be barrel)")
-	print("Bottom: Used Tools")
-	print("If everything is correct please press 1 or q for quit")
-	while true do
-		local _, _, _, code = event.pull("key_down")
-		if code == keyboard.keys["1"] then
-			return runFarm()
-		elseif code == keyboard.keys.q then
-			return 0
-		end
-	end
+    print("Front: Tools (can be battery)")
+    print("Right: Saplings (must be barrel)")
+    print("Bottom: Used Tools")
+    print("If everything is correct please press 1 or q for quit")
+    while true do
+        local _, _, _, code = event.pull("key_down")
+        if code == keyboard.keys["1"] then
+            return runFarm()
+        elseif code == keyboard.keys.q then
+            return 0
+        end
+    end
 end
 
 local state, err = xpcall(main, debug.traceback)
 if not state then
-	local f = io.open("autotreefarm_error"..tostring(os.clock()), "w")
-	f:write(err)
-	f:close()
-	return -1
+    local f = io.open("autotreefarm_error"..tostring(os.clock()), "w")
+    f:write(err)
+    f:close()
+    return -1
 end
 term.clear()
